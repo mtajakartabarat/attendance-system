@@ -10,6 +10,7 @@ function aggregateStats(records: AttendanceRecord[]) {
   const stats = {
     total: records.length,
     byGender: { 'laki-laki': 0, 'perempuan': 0 } as Record<string, number>,
+    hadirByGender: { 'laki-laki': 0, 'perempuan': 0 } as Record<string, number>,
     byStatus: {
       hadir: 0, izin: 0, sakit: 0, kerja: 0, pulang_kampung: 0, tanpa_keterangan: 0,
     } as Record<AttendanceStatus, number>,
@@ -18,6 +19,9 @@ function aggregateStats(records: AttendanceRecord[]) {
   for (const r of records) {
     stats.byStatus[r.status]++;
     stats.byGender[r.gender]++;
+    if (r.status === 'hadir') {
+      stats.hadirByGender[r.gender]++;
+    }
   }
 
   return stats;
@@ -26,7 +30,7 @@ function aggregateStats(records: AttendanceRecord[]) {
 type ViewMode = 'dashboard' | 'status-list';
 
 export default function Dashboard() {
-  const { getEventByCode, getAttendanceReport } = useAttendance();
+  const { getEventByCode, getAttendanceReport, attendees } = useAttendance();
   const [accessCode, setAccessCode] = useState('');
   const [filterPerwakilan, setFilterPerwakilan] = useState('');
   const [filterCabang, setFilterCabang] = useState('');
@@ -110,8 +114,7 @@ export default function Dashboard() {
     return Array.from(values).sort();
   }, [recordsByStatus, statusFilterPerwakilan]);
 
-  const totalEventAttendees = allRecords.length;
-  const attendancePercentage = totalEventAttendees > 0 ? Math.round(stats.total / totalEventAttendees * 100) : 0;
+  const attendancePercentage = attendees.length > 0 ? Math.round(stats.byStatus['hadir'] / attendees.length * 100) : 0;
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,7 +402,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm text-slate-400">Total Hadir</span>
               </div>
-              <p className="text-3xl font-bold text-white">{stats.total}</p>
+              <p className="text-3xl font-bold text-white">{stats.byStatus['hadir']}</p>
             </div>
 
             <div className="p-6 rounded-2xl" style={{ backgroundColor: '#12121a', border: '1px solid #2a2a3a' }}>
@@ -409,7 +412,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm text-slate-400">Laki-laki</span>
               </div>
-              <p className="text-3xl font-bold text-white">{stats.byGender['laki-laki']}</p>
+              <p className="text-3xl font-bold text-white">{stats.hadirByGender['laki-laki']}</p>
             </div>
 
             <div className="p-6 rounded-2xl" style={{ backgroundColor: '#12121a', border: '1px solid #2a2a3a' }}>
@@ -419,7 +422,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm text-slate-400">Perempuan</span>
               </div>
-              <p className="text-3xl font-bold text-white">{stats.byGender['perempuan']}</p>
+              <p className="text-3xl font-bold text-white">{stats.hadirByGender['perempuan']}</p>
             </div>
 
             <div className="p-6 rounded-2xl" style={{ backgroundColor: '#12121a', border: '1px solid #2a2a3a' }}>
