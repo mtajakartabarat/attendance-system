@@ -13,7 +13,7 @@ interface AttendanceContextType {
   getEventByCode: (code: string) => Promise<Event | null>;
   searchAttendees: (query: string) => Promise<Attendee[]>;
   checkAttendance: (attendeeId: number, eventId: number) => Promise<{ exists: boolean; status: AttendanceStatus | null }>;
-  recordAttendance: (attendeeId: number, eventId: number, status: AttendanceStatus) => Promise<void>;
+  recordAttendance: (attendeeId: number, eventId: number, status: AttendanceStatus, info?: string) => Promise<void>;
   getAttendanceStats: (eventId: number) => Promise<AttendanceStats>;
   getAttendanceReport: (eventId: number) => Promise<AttendanceReport>;
 }
@@ -50,8 +50,8 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
     return api.checkAttendance(attendeeId, eventId);
   }, []);
 
-  const recordAttendance = useCallback(async (attendeeId: number, eventId: number, status: AttendanceStatus) => {
-    await api.recordAttendance(attendeeId, eventId, status);
+  const recordAttendance = useCallback(async (attendeeId: number, eventId: number, status: AttendanceStatus, info?: string) => {
+    await api.recordAttendance(attendeeId, eventId, status, info);
     const key = `${eventId}-${attendeeId}`;
     setAttendanceRecords(prev => ({ ...prev, [key]: status }));
   }, []);

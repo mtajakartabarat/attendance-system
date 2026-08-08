@@ -1,10 +1,11 @@
-export type AttendanceStatus = 'hadir' | 'izin' | 'sakit' | 'kerja' | 'pulang_kampung' | 'tanpa_keterangan';
+export type AttendanceStatus = 'hadir' | 'izin' | 'sakit' | 'kerja' | 'pulang_kampung' | 'tanpa_keterangan' | 'meninggal';
 
 export interface Attendee {
   id: number;
   nama: string;
   perwakilan: string;
   cabang: string;
+  usroh: string;
   gender: 'laki-laki' | 'perempuan';
 }
 
@@ -19,6 +20,7 @@ export interface Event {
 
 export interface AttendanceStats {
   total: number;
+  totalAttendees: number;
   byGender: Record<string, number>;
   byStatus: Record<AttendanceStatus, number>;
 }
@@ -29,6 +31,7 @@ export interface AttendanceRecord {
   nama: string;
   perwakilan: string;
   cabang: string;
+  usroh: string;
   gender: string;
   status: AttendanceStatus;
   recorded_at: string;
@@ -47,6 +50,7 @@ export const STATUS_LABELS: Record<AttendanceStatus, string> = {
   kerja: 'Kerja',
   pulang_kampung: 'Pulang Kampung',
   tanpa_keterangan: 'Tanpa Keterangan',
+  meninggal: 'Meninggal',
 };
 
 export const STATUS_COLORS: Record<AttendanceStatus, string> = {
@@ -56,4 +60,5 @@ export const STATUS_COLORS: Record<AttendanceStatus, string> = {
   kerja: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   pulang_kampung: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   tanpa_keterangan: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  meninggal: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
 };

@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAttendance } from '@/context/AttendanceContext';
-import { Search, User, MapPin, Building2, Check, AlertCircle, X, ChevronDown, Loader2, RefreshCw } from 'lucide-react';
+import { Search, User, Users, MapPin, Building2, Check, AlertCircle, X, ChevronDown, Loader2, RefreshCw } from 'lucide-react';
 import { AttendanceStatus, STATUS_LABELS, STATUS_COLORS } from '@/types';
 import type { Attendee } from '@/types';
 
 export default function RecordAttendance() {
-  const { getEventByCode, searchAttendees, checkAttendance, recordAttendance, attendanceRecords, events, attendees } = useAttendance();
+  const { getEventByCode, searchAttendees, checkAttendance, recordAttendance, attendanceRecords, attendees } = useAttendance();
   const [accessCode, setAccessCode] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPerwakilan, setFilterPerwakilan] = useState('');
@@ -15,6 +15,8 @@ export default function RecordAttendance() {
   const [selectedAttendee, setSelectedAttendee] = useState<number | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('hadir');
+  const [info, setInfo] = useState('');
+  const [infoError, setInfoError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentEvent, setCurrentEvent] = useState<{ id: number; name: string; event_month: string; event_year: string } | null>(null);
@@ -115,6 +117,8 @@ export default function RecordAttendance() {
   const handleSelectAttendee = async (attendeeId: number) => {
     setSelectedAttendee(attendeeId);
     setSelectedStatus('hadir');
+    setInfo('');
+    setInfoError(false);
     setExistingRecord(null);
     setShowConfirm(true);
 
@@ -135,8 +139,12 @@ export default function RecordAttendance() {
 
   const handleSubmit = async () => {
     if (!selectedAttendee || !currentEvent) return;
+    if (selectedStatus === 'izin' && !info.trim()) {
+      setInfoError(true);
+      return;
+    }
     try {
-      await recordAttendance(selectedAttendee, currentEvent.id, selectedStatus);
+      await recordAttendance(selectedAttendee, currentEvent.id, selectedStatus, info.trim());
       setShowConfirm(false);
       setSelectedAttendee(null);
       setSearchQuery('');
@@ -201,15 +209,6 @@ export default function RecordAttendance() {
               {loading ? 'Memvalidasi...' : 'Lanjutkan'}
             </button>
           </form>
-
-          <div className="mt-8 p-4 rounded-xl" style={{ backgroundColor: '#12121a', border: '1px solid #2a2a3a' }}>
-            <p className="text-sm text-slate-400 mb-2">Kode akses yang tersedia:</p>
-            <div className="space-y-1 text-sm text-slate-300">
-              {events.map(e => (
-                <p key={e.id}><span className="font-mono text-indigo-400">{e.access_code}</span> - {e.name}</p>
-              ))}
-            </div>
-          </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -404,6 +403,13 @@ export default function RecordAttendance() {
                   <p className="text-white font-medium">{selectedAttendeeData.cabang}</p>
                 </div>
               </div>
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-slate-500" />
+                <div>
+                  <p className="text-sm text-slate-400">Usroh</p>
+                  <p className="text-white font-medium">{selectedAttendeeData.usroh}</p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2 mb-6">
@@ -412,7 +418,10 @@ export default function RecordAttendance() {
                 {(Object.keys(STATUS_LABELS) as AttendanceStatus[]).map((status) => (
                   <button
                     key={status}
-                    onClick={() => setSelectedStatus(status)}
+                    onClick={() => {
+                      setSelectedStatus(status);
+                      if (status !== 'izin') setInfoError(false);
+                    }}
                     className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                       selectedStatus === status
                         ? STATUS_COLORS[status]
@@ -424,6 +433,31 @@ export default function RecordAttendance() {
                 ))}
               </div>
             </div>
+
+            {selectedStatus === 'izin' && (
+              <div className="space-y-2 mb-6">
+                <label className="text-sm text-slate-400" htmlFor="attendance-info">
+                  Keterangan (wajib diisi)
+                </label>
+                <textarea
+                  id="attendance-info"
+                  value={info}
+                  onChange={(e) => { setInfo(e.target.value); if (infoError && e.target.value.trim()) setInfoError(false); }}
+                  rows={3}
+                  placeholder="Tuliskan alasan izin..."
+                  className={`w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 focus:outline-none resize-none ${
+                    infoError ? 'border border-red-500/50' : ''
+                  }`}
+                  style={{ backgroundColor: '#1a1a24', border: infoError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid #2a2a3a' }}
+                />
+                {infoError && (
+                  <p className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Keterangan wajib diisi sebelum menyimpan.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button

@@ -33,7 +33,13 @@ export const api = {
   searchAttendees: (query: string) => callFunction<Attendee[]>('searchAttendees', { query }),
   checkAttendance: (attendeeId: number, eventId: number) =>
     callFunction<{ exists: boolean; status: AttendanceStatus | null }>('checkAttendance', { attendeeId, eventId }),
-  recordAttendance: (attendeeId: number, eventId: number, status: AttendanceStatus) =>
-    callFunction<{ record: { id: number }; updated: boolean }>('recordAttendance', { attendeeId, eventId, status }),
+  recordAttendance: (attendeeId: number, eventId: number, status: AttendanceStatus, info?: string) =>
+    callFunction<{ record: { id: number }; updated: boolean }>('recordAttendance', { attendeeId, eventId, status, info: info ?? '' }),
   getAttendanceReport: (eventId: number) => callFunction<AttendanceReport>('getAttendanceReport', { eventId }),
+  exportAttendance: (eventId: number) => callFunction<string>('exportAttendance', { eventId }),
+  createEvent: (data: { name: string; event_month: string; event_year: string; access_code: string; access_code_expiration: string }) =>
+    callFunction<Event>('createEvent', data),
+  updateEvent: (data: { id: number; name: string; event_month: string; event_year: string; access_code: string; access_code_expiration: string }) =>
+    callFunction<Event>('updateEvent', data),
+  deleteEvent: (id: number) => callFunction<{ success: boolean }>('deleteEvent', { id }),
 };

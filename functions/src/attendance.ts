@@ -12,6 +12,7 @@ export interface AttendanceRecord {
 
 export interface AttendanceStats {
   total: number;
+  totalAttendees: number;
   byGender: Record<string, number>;
   byStatus: Record<AttendanceStatus, number>;
 }
@@ -120,6 +121,9 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
     [eventId]
   );
 
+  const totalResult = await query("SELECT COUNT(*) as count FROM attendees");
+  const totalAttendees = parseInt(totalResult.rows[0].count as string, 10);
+
   const byGender: Record<string, number> = {"laki-laki": 0, "perempuan": 0};
   const byStatus: Record<AttendanceStatus, number> = {
     hadir: 0,
@@ -153,7 +157,7 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
 
   return {
     event_id: eventId,
-    stats: {total: records.length, byGender, byStatus},
+    stats: {total: records.length, totalAttendees, byGender, byStatus},
     records,
   };
 }
