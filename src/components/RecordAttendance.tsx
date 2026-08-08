@@ -12,6 +12,7 @@ export default function RecordAttendance() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPerwakilan, setFilterPerwakilan] = useState('');
   const [filterCabang, setFilterCabang] = useState('');
+  const [filterUsroh, setFilterUsroh] = useState('');
   const [selectedAttendee, setSelectedAttendee] = useState<number | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('hadir');
@@ -61,7 +62,7 @@ export default function RecordAttendance() {
 
   useEffect(() => {
     setDisplayCount(20);
-  }, [searchResults, filterPerwakilan, filterCabang]);
+  }, [searchResults, filterPerwakilan, filterCabang, filterUsroh]);
 
   const allAttendees = attendees;
 
@@ -74,8 +75,11 @@ export default function RecordAttendance() {
     if (filterCabang) {
       results = results.filter(a => a.cabang === filterCabang);
     }
+    if (filterUsroh) {
+      results = results.filter(a => a.usroh === filterUsroh);
+    }
     return results;
-  }, [searchResults, allAttendees, filterPerwakilan, filterCabang]);
+  }, [searchResults, allAttendees, filterPerwakilan, filterCabang, filterUsroh]);
 
   const visibleAttendees = useMemo(() => displayAttendees.slice(0, displayCount), [displayAttendees, displayCount]);
   const hasMore = displayCount < displayAttendees.length;
@@ -94,6 +98,18 @@ export default function RecordAttendance() {
     const values = new Set(source.map(a => a.cabang));
     return Array.from(values).sort();
   }, [searchResults, allAttendees, filterPerwakilan]);
+
+  const uniqueUsroh = useMemo(() => {
+    let source = searchResults ?? allAttendees;
+    if (filterPerwakilan) {
+      source = source.filter(a => a.perwakilan === filterPerwakilan);
+    }
+    if (filterCabang) {
+      source = source.filter(a => a.cabang === filterCabang);
+    }
+    const values = new Set(source.map(a => a.usroh));
+    return Array.from(values).sort();
+  }, [searchResults, allAttendees, filterPerwakilan, filterCabang]);
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +175,7 @@ export default function RecordAttendance() {
     setSearchQuery('');
     setFilterPerwakilan('');
     setFilterCabang('');
+    setFilterUsroh('');
   };
 
   const selectedAttendeeData = displayAttendees.find(a => a.id === selectedAttendee);
@@ -249,7 +266,7 @@ export default function RecordAttendance() {
               className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-white transition-colors"
               style={{ backgroundColor: '#1a1a24', border: '1px solid #2a2a3a' }}
             >
-              <span className="text-sm text-slate-400">Filter: {filterPerwakilan || filterCabang ? 'Aktif' : 'Semua'}</span>
+              <span className="text-sm text-slate-400">Filter: {(filterPerwakilan || filterCabang || filterUsroh) ? 'Aktif' : 'Semua'}</span>
               <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
 
@@ -277,7 +294,18 @@ export default function RecordAttendance() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-                {(filterPerwakilan || filterCabang) && (
+                <select
+                  value={filterUsroh}
+                  onChange={(e) => setFilterUsroh(e.target.value)}
+                  className="h-12 px-4 rounded-xl text-white text-sm focus:outline-none sm:col-span-2"
+                  style={{ backgroundColor: '#1a1a24', border: '1px solid #2a2a3a' }}
+                >
+                  <option value="">Semua Usroh</option>
+                  {uniqueUsroh.map(u => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+                {(filterPerwakilan || filterCabang || filterUsroh) && (
                   <button
                     onClick={handleResetFilters}
                     className="h-12 px-4 rounded-xl text-sm text-slate-400 hover:text-white transition-colors border sm:col-span-2"
