@@ -34,6 +34,7 @@ export interface AttendanceRecord {
   usroh: string;
   gender: string;
   status: AttendanceStatus;
+  info: string;
   recorded_at: string;
 }
 

@@ -26,6 +26,7 @@ export interface AttendanceReportRow {
   usroh: string;
   gender: string;
   status: AttendanceStatus;
+  info: string;
   recorded_at: string;
 }
 
@@ -112,7 +113,7 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
   }
 
   const recordsResult = await query(
-    `SELECT DISTINCT ON (a.attendee_id) a.id, a.attendee_id, a.event_id, a.status, a.created_at as recorded_at,
+    `SELECT DISTINCT ON (a.attendee_id) a.id, a.attendee_id, a.event_id, a.status, a.info, a.created_at as recorded_at,
             att.name, att.perwakilan, att.cabang, att.usroh, att.gender
      FROM attendances a
      JOIN attendees att ON att.id = a.attendee_id
@@ -151,6 +152,7 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
       usroh: (r.usroh as string) ?? "",
       gender,
       status,
+      info: (r.info as string) ?? "",
       recorded_at: r.recorded_at as string,
     };
   });

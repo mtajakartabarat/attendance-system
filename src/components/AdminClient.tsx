@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useSyncExternalStore, useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { Event } from '@/types';
 import {
   ClipboardList, Lock, Mail, LogOut, Loader2, AlertCircle,
-  CalendarPlus, Download, Pencil, Trash2, X, Users,
+  CalendarPlus, Eye, Pencil, Trash2, X, Users,
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'admin@admin.com';
@@ -69,7 +70,6 @@ export default function AdminClient() {
   const [events, setEvents] = useState<Event[] | null>(null);
   const loading = events === null;
   const [error, setError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Event | null>(null);
@@ -122,24 +122,6 @@ export default function AdminClient() {
   const handleLogout = () => {
     setAuth(false);
     setEvents([]);
-  };
-
-  const handleExport = async (event: Event) => {
-    setExporting(event.id);
-    try {
-      const csv = await api.exportAttendance(event.id);
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${event.access_code || 'event'}_attendance.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengekspor CSV');
-    } finally {
-      setExporting(null);
-    }
   };
 
   const handleDelete = async (event: Event) => {
@@ -322,19 +304,14 @@ export default function AdminClient() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleExport(event)}
-                      disabled={exporting === event.id}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
-                      style={{ backgroundColor: '#10b981' }}
+                    <Link
+                      href={`/admin/events/${event.id}`}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                      style={{ backgroundColor: '#6366f1' }}
                     >
-                      {exporting === event.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4" />
-                      )}
-                      CSV
-                    </button>
+                      <Eye className="w-4 h-4" />
+                      Lihat
+                    </Link>
                     <button
                       onClick={() => openEdit(event)}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-indigo-400 border border-indigo-500/30 transition-all hover:bg-indigo-500/10"
@@ -382,7 +359,7 @@ export default function AdminClient() {
                       type="text"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Contoh: Rapat Pleno PW Muslimat NU Jawa Barat"
+                      placeholder="Contoh: Kajian Gelombang"
                       className="w-full h-12 px-4 rounded-xl text-white placeholder-slate-500 focus:outline-none"
                       style={{ backgroundColor: '#1a1a24', border: '1px solid #2a2a3a' }}
                     />
