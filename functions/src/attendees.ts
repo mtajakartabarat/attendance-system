@@ -5,6 +5,7 @@ export interface AttendeeRow {
   name: string;
   perwakilan: string;
   cabang: string;
+  usroh: string;
   gender: string;
 }
 
@@ -13,6 +14,7 @@ export interface AttendeeResponse {
   nama: string;
   perwakilan: string;
   cabang: string;
+  usroh: string;
   gender: string;
 }
 
@@ -28,13 +30,14 @@ function toResponse(a: AttendeeRow): AttendeeResponse {
     nama: a.name,
     perwakilan: a.perwakilan,
     cabang: a.cabang ?? "",
+    usroh: a.usroh ?? "",
     gender: mapGender(a.gender),
   };
 }
 
 export async function getAttendees(): Promise<AttendeeResponse[]> {
   const result = await query(
-    "SELECT id, name, perwakilan, cabang, gender FROM attendees ORDER BY name"
+    "SELECT id, name, perwakilan, cabang, usroh, gender FROM attendees ORDER BY name"
   );
   return result.rows.map(toResponse);
 }
@@ -46,7 +49,7 @@ export async function searchAttendees(searchQuery: string): Promise<AttendeeResp
 
   const q = `%${searchQuery.toLowerCase()}%`;
   const result = await query(
-    `SELECT id, name, perwakilan, cabang, gender FROM attendees
+    `SELECT id, name, perwakilan, cabang, usroh, gender FROM attendees
      WHERE LOWER(name) LIKE $1 OR LOWER(perwakilan) LIKE $1 OR LOWER(cabang) LIKE $1
      ORDER BY name`,
     [q]

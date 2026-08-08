@@ -1,6 +1,6 @@
 import {query} from "./db.js";
 
-export type AttendanceStatus = "hadir" | "izin" | "sakit" | "kerja" | "pulang_kampung" | "tanpa_keterangan";
+export type AttendanceStatus = "hadir" | "izin" | "sakit" | "kerja" | "pulang_kampung" | "tanpa_keterangan" | "meninggal";
 
 export interface AttendanceRecord {
   id: number;
@@ -22,6 +22,7 @@ export interface AttendanceReportRow {
   nama: string;
   perwakilan: string;
   cabang: string;
+  usroh: string;
   gender: string;
   status: AttendanceStatus;
   recorded_at: string;
@@ -33,13 +34,14 @@ export interface AttendanceReport {
   records: AttendanceReportRow[];
 }
 
-const VALID_STATUSES: AttendanceStatus[] = ["hadir", "izin", "sakit", "kerja", "pulang_kampung", "tanpa_keterangan"];
+const VALID_STATUSES: AttendanceStatus[] = ["hadir", "izin", "sakit", "kerja", "pulang_kampung", "tanpa_keterangan", "meninggal"];
 
 export async function recordAttendance(
   attendeeId: number,
   eventId: number,
-  status: AttendanceStatus
-): Promise<{success: boolean; record: {id: number; attendee_id: number; event_id: number; status: string}; updated: boolean}> {
+  status: AttendanceStatus,
+  info: string = ""
+): Promise<{success: boolean; record: {id: number; attendee_id: number; event_id: number; status: string; info: string}; updated: boolean}> {
   if (!attendeeId || !eventId || !status) {
     throw new Error("attendee_id, event_id, and status are required");
   }
@@ -53,23 +55,23 @@ export async function recordAttendance(
     [attendeeId, eventId]
   );
 
-  let record: {id: number; attendee_id: number; event_id: number; status: string};
+  let record: {id: number; attendee_id: number; event_id: number; status: string; info: string};
   let updated = false;
 
   if (existing.rows.length > 0) {
     const result = await query(
-      `UPDATE attendances SET status = $3 WHERE attendee_id = $1 AND event_id = $2
-       RETURNING id, attendee_id, event_id, status`,
-      [attendeeId, eventId, status]
+      `UPDATE attendances SET status = $3, info = $4 WHERE attendee_id = $1 AND event_id = $2
+       RETURNING id, attendee_id, event_id, status, info`,
+      [attendeeId, eventId, status, info]
     );
     record = result.rows[0];
     updated = true;
   } else {
     const result = await query(
-      `INSERT INTO attendances (attendee_id, event_id, status)
-       VALUES ($1, $2, $3)
-       RETURNING id, attendee_id, event_id, status`,
-      [attendeeId, eventId, status]
+      `INSERT INTO attendances (attendee_id, event_id, status, info)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, attendee_id, event_id, status, info`,
+      [attendeeId, eventId, status, info]
     );
     record = result.rows[0];
   }
@@ -110,7 +112,7 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
 
   const recordsResult = await query(
     `SELECT DISTINCT ON (a.attendee_id) a.id, a.attendee_id, a.event_id, a.status, a.created_at as recorded_at,
-            att.name, att.perwakilan, att.cabang, att.gender
+            att.name, att.perwakilan, att.cabang, att.usroh, att.gender
      FROM attendances a
      JOIN attendees att ON att.id = a.attendee_id
      WHERE a.event_id = $1
@@ -126,6 +128,7 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
     kerja: 0,
     pulang_kampung: 0,
     tanpa_keterangan: 0,
+    meninggal: 0,
   };
 
   const records: AttendanceReportRow[] = recordsResult.rows.map((r: Record<string, unknown>) => {
@@ -141,6 +144,7 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
       nama: r.name as string,
       perwakilan: r.perwakilan as string,
       cabang: (r.cabang as string) ?? "",
+      usroh: (r.usroh as string) ?? "",
       gender,
       status,
       recorded_at: r.recorded_at as string,
@@ -152,4 +156,57 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
     stats: {total: records.length, byGender, byStatus},
     records,
   };
+}
+
+const STATUS_LABELS: Record<AttendanceStatus, string> = {
+  hadir: "Hadir",
+  izin: "Izin",
+  sakit: "Sakit",
+  kerja: "Kerja",
+  pulang_kampung: "Pulang Kampung",
+  tanpa_keterangan: "Tanpa Keterangan",
+  meninggal: "Meninggal",
+};
+
+function toCsvCell(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, "\"\"")}"`;
+  }
+  return value;
+}
+
+export async function exportAttendanceCsv(eventId: number): Promise<string> {
+  if (!eventId) {
+    throw new Error("event_id is required");
+  }
+
+  const result = await query(
+    `SELECT DISTINCT ON (a.attendee_id) a.status, a.info,
+            att.name, att.perwakilan, att.cabang, att.usroh, att.gender,
+            e.name as event_name
+     FROM attendances a
+     JOIN attendees att ON att.id = a.attendee_id
+     JOIN events e ON e.id = a.event_id
+     WHERE a.event_id = $1
+     ORDER BY a.attendee_id, a.created_at DESC`,
+    [eventId]
+  );
+
+  const header = ["attendee_name", "gender", "perwakilan", "cabang", "usroh", "event_name", "status", "info"];
+
+  const rows = result.rows.map((r: Record<string, unknown>) => {
+    const status = r.status as AttendanceStatus;
+    return [
+      r.name as string,
+      mapGender(r.gender as string),
+      (r.perwakilan as string) ?? "",
+      (r.cabang as string) ?? "",
+      (r.usroh as string) ?? "",
+      (r.event_name as string) ?? "",
+      STATUS_LABELS[status] ?? status,
+      (r.info as string) ?? "",
+    ];
+  });
+
+  return [header, ...rows].map((row) => row.map(toCsvCell).join(",")).join("\r\n");
 }

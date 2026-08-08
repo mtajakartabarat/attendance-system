@@ -43,3 +43,61 @@ export async function getEventByCode(accessCode: string): Promise<EventResponse 
   );
   return result.rows.length > 0 ? toResponse(result.rows[0]) : null;
 }
+
+export interface CreateEventParams {
+  name: string;
+  event_month: string;
+  event_year: string | number;
+  access_code: string;
+  access_code_expiration: string;
+}
+
+export interface UpdateEventParams extends CreateEventParams {
+  id: number;
+}
+
+export async function createEvent(data: CreateEventParams): Promise<EventResponse> {
+  const result = await query(
+    `INSERT INTO events (name, event_month, event_year, access_code, access_code_expiration)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, name, event_month, event_year, access_code, access_code_expiration`,
+    [
+      data.name,
+      data.event_month,
+      Number(data.event_year),
+      data.access_code.toUpperCase(),
+      data.access_code_expiration,
+    ]
+  );
+  return toResponse(result.rows[0]);
+}
+
+export async function updateEvent(data: UpdateEventParams): Promise<EventResponse> {
+  const result = await query(
+    `UPDATE events
+     SET name = $1, event_month = $2, event_year = $3, access_code = $4, access_code_expiration = $5
+     WHERE id = $6
+     RETURNING id, name, event_month, event_year, access_code, access_code_expiration`,
+    [
+      data.name,
+      data.event_month,
+      Number(data.event_year),
+      data.access_code.toUpperCase(),
+      data.access_code_expiration,
+      data.id,
+    ]
+  );
+  if (result.rows.length === 0) {
+    throw new Error("Event not found");
+  }
+  return toResponse(result.rows[0]);
+}
+
+export async function deleteEvent(id: number): Promise<{ success: boolean }> {
+  await query("DELETE FROM attendance WHERE event_id = $1", [id]);
+  const result = await query("DELETE FROM events WHERE id = $1 RETURNING id", [id]);
+  if (result.rows.length === 0) {
+    throw new Error("Event not found");
+  }
+  return { success: true };
+}
