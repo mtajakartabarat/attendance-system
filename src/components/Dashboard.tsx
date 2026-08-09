@@ -1,10 +1,47 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Users, User, UserX, AlertCircle, TrendingUp, Calendar, Badge, Building2, MapPin, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Search, Users, User, UserX, AlertCircle, TrendingUp, Calendar, Badge, Building2, MapPin, ArrowLeft, ChevronDown, Clock } from 'lucide-react';
 import { AttendanceStatus, STATUS_LABELS, STATUS_COLORS } from '@/types';
 import { useAttendance } from '@/context/AttendanceContext';
 import type { AttendanceReport, AttendanceRecord } from '@/types';
+
+interface DashboardListItem {
+  id: number;
+  nama: string;
+  perwakilan: string;
+  cabang: string;
+  usroh: string;
+  gender: string;
+  info: string;
+}
+
+function filterDashboardList<T extends Pick<DashboardListItem, 'nama' | 'perwakilan' | 'cabang' | 'usroh'>>(
+  items: T[],
+  search: string,
+  perwakilan: string,
+  cabang: string,
+  usroh: string
+): T[] {
+  let results = items;
+  if (search.trim()) {
+    const q = search.toLowerCase();
+    results = results.filter((i) =>
+      i.nama.toLowerCase().includes(q) ||
+      i.perwakilan.toLowerCase().includes(q) ||
+      i.cabang.toLowerCase().includes(q) ||
+      i.usroh.toLowerCase().includes(q)
+    );
+  }
+  if (perwakilan) results = results.filter((i) => i.perwakilan === perwakilan);
+  if (cabang) results = results.filter((i) => i.cabang === cabang);
+  if (usroh) results = results.filter((i) => i.usroh === usroh);
+  return results;
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return Array.from(new Set(values)).sort();
+}
 
 function aggregateStats(records: AttendanceRecord[]) {
   const stats = {
@@ -30,7 +67,7 @@ function aggregateStats(records: AttendanceRecord[]) {
 type ViewMode = 'dashboard' | 'status-list';
 
 export default function Dashboard() {
-  const { getEventByCode, getAttendanceReport } = useAttendance();
+  const { getEventByCode, getAttendanceReport, attendees } = useAttendance();
   const [accessCode, setAccessCode] = useState('');
   const [filterPerwakilan, setFilterPerwakilan] = useState('');
   const [filterCabang, setFilterCabang] = useState('');
@@ -41,6 +78,7 @@ export default function Dashboard() {
   const [report, setReport] = useState<AttendanceReport | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | null>(null);
+  const [viewingNotPresensi, setViewingNotPresensi] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusSearch, setStatusSearch] = useState('');
   const [statusFilterPerwakilan, setStatusFilterPerwakilan] = useState('');
@@ -98,54 +136,67 @@ export default function Dashboard() {
       .sort((a, b) => a.nama.localeCompare(b.nama));
   }, [filteredRecords, selectedStatus]);
 
-  const filteredStatusRecords = useMemo(() => {
-    let results = recordsByStatus;
-    if (statusSearch.trim()) {
-      const q = statusSearch.toLowerCase();
-      results = results.filter(r =>
-        r.nama.toLowerCase().includes(q) ||
-        r.perwakilan.toLowerCase().includes(q) ||
-        r.cabang.toLowerCase().includes(q) ||
-        r.usroh.toLowerCase().includes(q)
-      );
+  const notRecordedAttendees = useMemo(() => {
+    const recordedIds = new Set(allRecords.map(r => r.attendee_id));
+    let filtered = attendees;
+    if (filterPerwakilan) {
+      filtered = filtered.filter(a => a.perwakilan === filterPerwakilan);
     }
+    if (filterCabang) {
+      filtered = filtered.filter(a => a.cabang === filterCabang);
+    }
+    if (filterUsroh) {
+      filtered = filtered.filter(a => a.usroh === filterUsroh);
+    }
+    return filtered
+      .filter(a => !recordedIds.has(a.id))
+      .sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [attendees, allRecords, filterPerwakilan, filterCabang, filterUsroh]);
+
+  const baseListItems = useMemo<DashboardListItem[]>(
+    () => {
+      const base = viewingNotPresensi ? notRecordedAttendees : recordsByStatus;
+      return base.map((i) => ({
+        id: i.id,
+        nama: i.nama,
+        perwakilan: i.perwakilan,
+        cabang: i.cabang,
+        usroh: i.usroh,
+        gender: i.gender,
+        info: 'info' in i ? (i.info ?? '') : '',
+      }));
+    },
+    [viewingNotPresensi, notRecordedAttendees, recordsByStatus]
+  );
+
+  const listItems = useMemo(
+    () => filterDashboardList(baseListItems, statusSearch, statusFilterPerwakilan, statusFilterCabang, statusFilterUsroh),
+    [baseListItems, statusSearch, statusFilterPerwakilan, statusFilterCabang, statusFilterUsroh]
+  );
+
+  const listUniquePerwakilan = useMemo(
+    () => uniqueSorted(baseListItems.map(i => i.perwakilan)),
+    [baseListItems]
+  );
+
+  const listUniqueCabang = useMemo(() => {
+    let filtered = baseListItems;
     if (statusFilterPerwakilan) {
-      results = results.filter(r => r.perwakilan === statusFilterPerwakilan);
+      filtered = filtered.filter(i => i.perwakilan === statusFilterPerwakilan);
+    }
+    return uniqueSorted(filtered.map(i => i.cabang));
+  }, [baseListItems, statusFilterPerwakilan]);
+
+  const listUniqueUsroh = useMemo(() => {
+    let filtered = baseListItems;
+    if (statusFilterPerwakilan) {
+      filtered = filtered.filter(i => i.perwakilan === statusFilterPerwakilan);
     }
     if (statusFilterCabang) {
-      results = results.filter(r => r.cabang === statusFilterCabang);
+      filtered = filtered.filter(i => i.cabang === statusFilterCabang);
     }
-    if (statusFilterUsroh) {
-      results = results.filter(r => r.usroh === statusFilterUsroh);
-    }
-    return results;
-  }, [recordsByStatus, statusSearch, statusFilterPerwakilan, statusFilterCabang, statusFilterUsroh]);
-
-  const statusUniquePerwakilan = useMemo(() => {
-    const values = new Set(recordsByStatus.map(r => r.perwakilan));
-    return Array.from(values).sort();
-  }, [recordsByStatus]);
-
-  const statusUniqueCabang = useMemo(() => {
-    let filtered = recordsByStatus;
-    if (statusFilterPerwakilan) {
-      filtered = filtered.filter(r => r.perwakilan === statusFilterPerwakilan);
-    }
-    const values = new Set(filtered.map(r => r.cabang));
-    return Array.from(values).sort();
-  }, [recordsByStatus, statusFilterPerwakilan]);
-
-  const statusUniqueUsroh = useMemo(() => {
-    let filtered = recordsByStatus;
-    if (statusFilterPerwakilan) {
-      filtered = filtered.filter(r => r.perwakilan === statusFilterPerwakilan);
-    }
-    if (statusFilterCabang) {
-      filtered = filtered.filter(r => r.cabang === statusFilterCabang);
-    }
-    const values = new Set(filtered.map(r => r.usroh));
-    return Array.from(values).sort();
-  }, [recordsByStatus, statusFilterPerwakilan, statusFilterCabang]);
+    return uniqueSorted(filtered.map(i => i.usroh));
+  }, [baseListItems, statusFilterPerwakilan, statusFilterCabang]);
 
   const totalAttendees = report?.stats.totalAttendees ?? 0;
   const attendancePercentage = totalAttendees > 0 ? Math.round(stats.byStatus['hadir'] / totalAttendees * 100) : 0;
@@ -179,7 +230,18 @@ export default function Dashboard() {
   };
 
   const handleStatusClick = (status: AttendanceStatus) => {
+    setViewingNotPresensi(false);
     setSelectedStatus(status);
+    setViewMode('status-list');
+    setStatusSearch('');
+    setStatusFilterPerwakilan('');
+    setStatusFilterCabang('');
+    setStatusFilterUsroh('');
+  };
+
+  const handleNotPresensiClick = () => {
+    setViewingNotPresensi(true);
+    setSelectedStatus(null);
     setViewMode('status-list');
     setStatusSearch('');
     setStatusFilterPerwakilan('');
@@ -190,6 +252,7 @@ export default function Dashboard() {
   const handleBackToDashboard = () => {
     setViewMode('dashboard');
     setSelectedStatus(null);
+    setViewingNotPresensi(false);
     setStatusSearch('');
     setStatusFilterPerwakilan('');
     setStatusFilterCabang('');
@@ -245,7 +308,7 @@ export default function Dashboard() {
             </button>
           </form>
         </div>
-      ) : viewMode === 'status-list' && selectedStatus ? (
+      ) : viewMode === 'status-list' && (selectedStatus || viewingNotPresensi) ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <button
@@ -256,7 +319,7 @@ export default function Dashboard() {
               Kembali
             </button>
             <button
-              onClick={() => { setCurrentEvent(null); setAccessCode(''); setReport(null); setStatusSearch(''); setStatusFilterPerwakilan(''); setStatusFilterCabang(''); setStatusFilterUsroh(''); }}
+              onClick={() => { setCurrentEvent(null); setAccessCode(''); setReport(null); setViewingNotPresensi(false); setStatusSearch(''); setStatusFilterPerwakilan(''); setStatusFilterCabang(''); setStatusFilterUsroh(''); }}
               className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition-colors"
             >
               Ubah Kode
@@ -264,12 +327,18 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ backgroundColor: '#12121a', border: '1px solid #2a2a3a' }}>
-            <div className={`p-2 rounded-xl ${STATUS_COLORS[selectedStatus].split(' ')[0]}`}>
-              {React.createElement(statusIcons[selectedStatus], { className: `w-5 h-5 ${STATUS_COLORS[selectedStatus].split(' ')[1]}` })}
-            </div>
+            {viewingNotPresensi ? (
+              <div className="p-2 rounded-xl bg-orange-500/20">
+                <Clock className="w-5 h-5 text-orange-400" />
+              </div>
+            ) : (
+              <div className={`p-2 rounded-xl ${STATUS_COLORS[selectedStatus!].split(' ')[0]}`}>
+                {React.createElement(statusIcons[selectedStatus!], { className: `w-5 h-5 ${STATUS_COLORS[selectedStatus!].split(' ')[1]}` })}
+              </div>
+            )}
             <div>
-              <h2 className="text-xl font-bold text-white">{STATUS_LABELS[selectedStatus]}</h2>
-              <p className="text-sm text-slate-400">{filteredStatusRecords.length} / {recordsByStatus.length} attendees</p>
+              <h2 className="text-xl font-bold text-white">{viewingNotPresensi ? 'Belum Presensi' : STATUS_LABELS[selectedStatus!]}</h2>
+              <p className="text-sm text-slate-400">{listItems.length} / {baseListItems.length} attendees</p>
             </div>
           </div>
 
@@ -293,7 +362,7 @@ export default function Dashboard() {
                 style={{ backgroundColor: '#1a1a24', border: '1px solid #2a2a3a' }}
               >
                 <option value="">Semua Perwakilan</option>
-                {statusUniquePerwakilan.map(p => (
+                {listUniquePerwakilan.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
@@ -304,7 +373,7 @@ export default function Dashboard() {
                 style={{ backgroundColor: '#1a1a24', border: '1px solid #2a2a3a' }}
               >
                 <option value="">Semua Cabang</option>
-                {statusUniqueCabang.map(c => (
+                {listUniqueCabang.map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -315,7 +384,7 @@ export default function Dashboard() {
                 style={{ backgroundColor: '#1a1a24', border: '1px solid #2a2a3a' }}
               >
                 <option value="">Semua Usroh</option>
-                {statusUniqueUsroh.map(u => (
+                {listUniqueUsroh.map(u => (
                   <option key={u} value={u}>{u}</option>
                 ))}
               </select>
@@ -323,12 +392,14 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-            {filteredStatusRecords.length === 0 ? (
+            {listItems.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
-                {recordsByStatus.length === 0 ? 'Tidak ada attendee dengan status ini' : 'Tidak ada hasil filter'}
+                {baseListItems.length === 0
+                  ? (viewingNotPresensi ? 'Semua peserta sudah presensi' : 'Tidak ada attendee dengan status ini')
+                  : 'Tidak ada hasil filter'}
               </div>
             ) : (
-              filteredStatusRecords.map((record) => (
+              listItems.map((record) => (
                 <div
                   key={record.id}
                   className="p-4 rounded-2xl transition-all"
@@ -375,7 +446,7 @@ export default function Dashboard() {
               <p className="text-sm text-slate-400">{currentEvent.event_month} {currentEvent.event_year}</p>
             </div>
             <button
-              onClick={() => { setCurrentEvent(null); setAccessCode(''); setReport(null); setStatusSearch(''); setStatusFilterPerwakilan(''); setStatusFilterCabang(''); setStatusFilterUsroh(''); }}
+              onClick={() => { setCurrentEvent(null); setAccessCode(''); setReport(null); setViewingNotPresensi(false); setStatusSearch(''); setStatusFilterPerwakilan(''); setStatusFilterCabang(''); setStatusFilterUsroh(''); }}
               className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition-colors"
             >
               Ubah Kode
@@ -547,6 +618,31 @@ export default function Dashboard() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Belum Presensi</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <button
+                onClick={handleNotPresensiClick}
+                disabled={notRecordedAttendees.length === 0}
+                className={`p-4 rounded-2xl transition-all hover:scale-[1.02] ${notRecordedAttendees.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                style={{ backgroundColor: '#12121a', border: '1px solid #2a2a3a' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-orange-500/20">
+                    <Clock className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm text-slate-400">Belum Presensi</p>
+                    <p className="text-2xl font-bold text-white">{notRecordedAttendees.length}</p>
+                  </div>
+                </div>
+                {notRecordedAttendees.length > 0 && (
+                  <p className="text-xs text-indigo-400 mt-2 text-left">Klik untuk lihat daftar</p>
+                )}
+              </button>
             </div>
           </div>
         </div>
