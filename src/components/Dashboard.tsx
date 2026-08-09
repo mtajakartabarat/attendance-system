@@ -349,6 +349,12 @@ export default function Dashboard() {
                         <Users className="w-3 h-3" />
                         {record.usroh}
                       </p>
+                      {selectedStatus === 'izin' && record.info && (
+                        <p className="text-sm text-amber-400/90 flex items-start gap-1">
+                          <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                          {record.info}
+                        </p>
+                      )}
                     </div>
                     <span className={`px-2 py-1 rounded-lg text-xs ${
                       record.gender === 'laki-laki' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'
