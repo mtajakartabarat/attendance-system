@@ -59,7 +59,7 @@ export default function HomeClient() {
         </main>
 
         <footer className="border-t py-6 text-center" style={{ borderColor: '#2a2a3a' }}>
-          <p className="text-sm text-slate-500">Attendance System &copy; 2025</p>
+          <p className="text-sm text-slate-500">Attendance System &copy; 2026</p>
         </footer>
       </div>
     </AttendanceProvider>

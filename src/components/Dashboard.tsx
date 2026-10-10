@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Users, User, UserX, AlertCircle, TrendingUp, Calendar, Badge, Building2, MapPin, ArrowLeft, ChevronDown, Clock } from 'lucide-react';
+import { Search, Users, User, AlertCircle, TrendingUp, Calendar, Badge, Building2, MapPin, ArrowLeft, ChevronDown, Clock } from 'lucide-react';
 import { AttendanceStatus, STATUS_LABELS, STATUS_COLORS } from '@/types';
 import { useAttendance } from '@/context/AttendanceContext';
 import type { AttendanceReport, AttendanceRecord } from '@/types';
@@ -49,7 +49,7 @@ function aggregateStats(records: AttendanceRecord[]) {
     byGender: { 'laki-laki': 0, 'perempuan': 0 } as Record<string, number>,
     hadirByGender: { 'laki-laki': 0, 'perempuan': 0 } as Record<string, number>,
     byStatus: {
-      hadir: 0, izin: 0, sakit: 0, kerja: 0, pulang_kampung: 0, tanpa_keterangan: 0, meninggal: 0,
+      hadir: 0, izin: 0, sakit: 0, kerja: 0, pulang_kampung: 0, tanpa_keterangan: 0,
     } as Record<AttendanceStatus, number>,
   };
 
@@ -266,7 +266,6 @@ export default function Dashboard() {
     kerja: TrendingUp,
     pulang_kampung: Badge,
     tanpa_keterangan: AlertCircle,
-    meninggal: UserX,
   };
 
   return (

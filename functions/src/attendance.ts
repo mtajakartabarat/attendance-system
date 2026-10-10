@@ -1,6 +1,6 @@
 import {query} from "./db.js";
 
-export type AttendanceStatus = "hadir" | "izin" | "sakit" | "kerja" | "pulang_kampung" | "tanpa_keterangan" | "meninggal";
+export type AttendanceStatus = "hadir" | "izin" | "sakit" | "kerja" | "pulang_kampung" | "tanpa_keterangan";
 
 export interface AttendanceRecord {
   id: number;
@@ -36,7 +36,7 @@ export interface AttendanceReport {
   records: AttendanceReportRow[];
 }
 
-const VALID_STATUSES: AttendanceStatus[] = ["hadir", "izin", "sakit", "kerja", "pulang_kampung", "tanpa_keterangan", "meninggal"];
+const VALID_STATUSES: AttendanceStatus[] = ["hadir", "izin", "sakit", "kerja", "pulang_kampung", "tanpa_keterangan"];
 
 export async function recordAttendance(
   attendeeId: number,
@@ -133,7 +133,6 @@ export async function getAttendanceReport(eventId: number): Promise<AttendanceRe
     kerja: 0,
     pulang_kampung: 0,
     tanpa_keterangan: 0,
-    meninggal: 0,
   };
 
   const records: AttendanceReportRow[] = recordsResult.rows.map((r: Record<string, unknown>) => {
@@ -171,7 +170,6 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
   kerja: "Kerja",
   pulang_kampung: "Pulang Kampung",
   tanpa_keterangan: "Tanpa Keterangan",
-  meninggal: "Meninggal",
 };
 
 function toCsvCell(value: string): string {
